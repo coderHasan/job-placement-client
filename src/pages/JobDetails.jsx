@@ -1,14 +1,15 @@
 import axios from "axios";
-import { compareAsc, compareDesc, format } from "date-fns";
+import { compareAsc, format } from "date-fns";
 import { useContext, useEffect, useState } from "react";
 
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../providers/AuthProvider";
 import toast from "react-hot-toast";
 
 const JobDetails = () => {
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState(new Date());
   const [details, setDetails] = useState({});
   const { id } = useParams();
@@ -21,6 +22,7 @@ const JobDetails = () => {
     maxPrice,
     description,
     buyer,
+    _id,
   } = details || {};
   const jobDetails = async () => {
     const { data } = await axios.get(
@@ -35,12 +37,13 @@ const JobDetails = () => {
   }, [id]);
   // jobDetails();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
     const price = form.price.value;
     const email = user?.email;
     const comment = form.comment.value;
+    const jobId = _id;
 
     if (user?.email === buyer?.email) return toast.error("Action not permited");
 
@@ -51,9 +54,29 @@ const JobDetails = () => {
       return toast.error("Offer less or at least maximum price!!");
 
     if (compareAsc(new Date(startDate), new Date(deadLine)) === 1)
-      return toast.error("Offer a date withing deadline");
+      return toast.error("Offer a date within deadline");
 
-    const reqData = { price, email, comment };
+    const reqData = {
+      price,
+      email,
+      comment,
+      deadLine: startDate,
+      jobId,
+      status: "pending",
+      jobTitle,
+      category,
+      buyer: buyer?.email,
+    };
+
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/add-bid`, reqData);
+      toast.success("Thanks for bid");
+      form.reset();
+      navigate("/my-bids");
+    } catch (error) {
+      toast.error(error?.response?.data);
+      console.log(error);
+    }
   };
 
   return (
